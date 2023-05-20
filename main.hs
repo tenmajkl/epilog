@@ -61,16 +61,22 @@ parseFactContent [Word x] = Just [x]
 parseFactContent ((Word x):Comma:rest) = parseFactContent rest >>= (\y -> Just (x : y))
 parseFactContent _ = Nothing
 
+validateFact :: (Node, [Token]) -> Maybe (Node, [Token])
+validateFact (Fact x y, Dot:r) = Just (Fact x y, r)
+validateFact _ = Nothing
+
+parseEval :: [Token] -> Maybe (Node, [Token])
+parseEval (Question:rest) = parseFact rest >>= (\(x, y) -> if head y == Dot then Just (Eval x, tail y) else Nothing)
+parseEval _ = Nothing
+
 parseSingle :: [Token] -> Maybe (Node, [Token])
 parseSingle x = 
     let fact = parseFact x
         rule = fact >>= parseRule
-    in rule <|> fact
+    in rule <|> (fact >>= validateFact) <|> parseEval x
 
 parse :: [Token] -> Maybe [Node]
 parse [] = Just []
 parse x = parseSingle x >>= (\(node, tokens) -> parse tokens >>= (\y -> Just (node : y)))
 
--- TODO Parsing dots in parseFact
-
-main = print (lexString "direct(london,prague) :- direct(penis, pero), direct(curak, kokot)." >>= parse)
+main = print (lexString "direct(london,prague).?-direct(london,prague)." >>= parse)
